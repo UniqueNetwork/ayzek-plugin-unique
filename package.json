@@ -1,0 +1,15 @@
+{
+  "name": "ayzek-plugin-unique",
+  "version": "1.0.5",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@ayzek/command-parser": "^1.0.2",
+    "@ayzek/core": "workspace:packages/ayzek-core",
+    "@ayzek/text": "workspace:packages/ayzek-text",
+    "@polkadot/api": "^7.6.1",
+    "@polkadot/util": "^8.3.3",
+    "@polkadot/util-crypto": "^8.3.3",
+    "web3": "^1.7.0"
+  }
+}
