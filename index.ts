@@ -132,13 +132,13 @@ const collection = ({ api, t }: Plugin) => command('collection')
 			}, 'Check collection sponsoring configuration');
 		});
 
-	}).thenLiteral('get-by-id', b => {
+	}).thenLiteral('get-eth-by-id', b => {
 		b.thenArgument('collection id', intArgument(), b => {
 			b.executes(async ctx => {
 				const collectionId = ctx.getArgument('collection id');
 				const collectionAddress = collectionIdToAddress(collectionId);
 				return t`Collection address:\n${collectionAddress}`;
-			});
+			}, 'Get Etherium collection address by id');
 		});
 	});
 
@@ -295,7 +295,7 @@ const convert = ({ t }: Plugin) => command('convert')
 							}
 							
 							return t`"${ethAddress}" is not a Etherium address`;
-						}, 'Convert Substrate address to Etherium address');
+						}, 'Convert Etherium address to specific Substrate network address');
 					});
 				});
 			});
@@ -312,7 +312,7 @@ const convert = ({ t }: Plugin) => command('convert')
 					}
 					
 					return t`"${ethAddress}" is not a Etherium address`;
-				}, 'Convert Substrate address to Etherium address');
+				}, 'Convert Etherium address to common Substrate address');
 			});
 		});
 	});
