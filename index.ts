@@ -1,4 +1,4 @@
-import { ArgumentType, intArgument, stringArgument } from '@ayzek/command-parser/arguments';
+import { ArgumentType, stringArgument } from '@ayzek/command-parser/arguments';
 import { ParseEntryPoint } from '@ayzek/command-parser/command';
 import { UserDisplayableError } from '@ayzek/command-parser/error';
 import Reader from '@ayzek/command-parser/reader';
@@ -12,9 +12,6 @@ import type { Contract } from 'web3-eth-contract/types';
 import * as io from 'io-ts';
 import { addressToEvm, evmToAddress, isAddress, isEthereumAddress } from '@polkadot/util-crypto';
 import { u8aToHex } from '@polkadot/util';
-import { report } from 'process';
-import { LiteralArgumentBuilder } from '@ayzek/command-parser/builder';
-import { CommandMessageEvent } from '@ayzek/core/events/message';
 
 class ContractArgument extends ArgumentType<string, Contract> {
 	constructor(public web3: Web3) {
@@ -61,7 +58,7 @@ function asHexString(address: Buffer): string {
 }
 
 function collectionIdToAddress(address: number): string {
-	if (address >= 0xffffffff || address < 0) 
+	if (address >= 0xffffffff || address < 0)
 		throw new Error('id overflow');
 
 	const buf = Buffer.from([0x17, 0xc4, 0xe6, 0x45, 0x3c, 0xc4, 0x9a, 0xaa, 0xae, 0xac, 0xa8, 0x94, 0xe6, 0xd9, 0x68, 0x3e,
@@ -110,7 +107,7 @@ const collection = ({ api, t }: Plugin) => command('collection')
 
 				{
 					const timeout = collection.limits.sponsorTransferTimeout;
-					if(timeout === null || timeout !== 0) {
+					if (timeout === null || timeout !== 0) {
 						report.push(t`🚸 Transfer timeout is ${timeout || 'not set (default, non-zero is used)'}`);
 					} else {
 						report.push(t`✅ Transfer timeout is zero blocks`);
@@ -118,7 +115,7 @@ const collection = ({ api, t }: Plugin) => command('collection')
 				}
 				{
 					const timeout = collection.limits.sponsorApproveTimeout;
-					if(timeout === null || timeout !== 0) {
+					if (timeout === null || timeout !== 0) {
 						report.push(t`🚸 Approve timeout is ${timeout || 'not set (default, non-zero is used)'}`);
 					} else {
 						report.push(t`✅ Approve timeout is zero blocks`);
@@ -132,13 +129,12 @@ const collection = ({ api, t }: Plugin) => command('collection')
 			}, 'Check collection sponsoring configuration');
 		});
 
-	}).thenLiteral('get-eth-by-id', b => {
-		b.thenArgument('collection id', intArgument(), b => {
+		b.thenLiteral('eth-address', b => {
 			b.executes(async ctx => {
-				const collectionId = ctx.getArgument('collection id');
-				const collectionAddress = collectionIdToAddress(collectionId);
+				const collection = ctx.getArgument('collection');
+				const collectionAddress = collectionIdToAddress(collection);
 				return t`Collection address:\n${collectionAddress}`;
-			}, 'Get Etherium collection address by id');
+			}, 'Get Ethereum collection address by id');
 		});
 	});
 
@@ -225,7 +221,7 @@ const tokens: { [key: string]: Token } = {
 
 /**
  * Formats passed value as token amount
- * 
+ *
  * {token'name'{1}} where {1} - bigint
  */
 class TokenComponent extends Component {
@@ -266,26 +262,29 @@ const convert = ({ t }: Plugin) => command('convert')
 	.thenLiteral('to', b => {
 		b.thenLiteral('eth', b => {
 			b.thenArgument('sub address', stringArgument('single_word'), b => {
-				b.executes( async ctx => {
+				b.executes(async ctx => {
 					const subAddress = ctx.getArgument('sub address');
 					if (isAddress(subAddress)) {
 						const ethAddressBytes = addressToEvm(subAddress);
 						const ethAddress = Web3.utils.toChecksumAddress(asHexString(Buffer.from(ethAddressBytes)));
-						return t`Etherium address:\n${ethAddress}`;
+						return t`Ethereum address:\n${ethAddress}`;
 					}
 
 					return t`"${subAddress}" is not a Substrate address`;
-				}, 'Convert Substrate address to Etherium address');
+				}, 'Convert Substrate address to Ethereum address');
 			});
-		}).thenArgument('network-id', stringArgument('single_word'), b => {
-			b.thenLiteral('from', b => {
-				b.thenLiteral('eth', b => {
-					b.thenArgument('eth address', stringArgument('single_word'), b => {
-						b.executes( async ctx => {
+		});
+	})
+	.thenLiteral('from', b => {
+		b.thenLiteral('eth', b => {
+			b.thenArgument('eth address', stringArgument('single_word'), b => {
+				b.thenLiteral('to', b => {
+					b.thenArgument('network-id', stringArgument('single_word'), b => {
+						b.executes(async ctx => {
 							const networkId = ctx.getArgument('network-id');
 							const networkPrefix = networks.get(networkId);
-							if (typeof networkId === 'undefined') {
-								return t`Unsupported network id "${networkId}"`;
+							if (typeof networkPrefix === 'undefined') {
+								return t`Unsupported network id "${networkId}", supported: ${[...networks.keys()].join(', ')}`;
 							}
 
 							const ethAddress = ctx.getArgument('eth address');
@@ -293,26 +292,20 @@ const convert = ({ t }: Plugin) => command('convert')
 								const subAddress = evmToAddress(ethAddress, networkPrefix).toString();
 								return t`Substrate address:\n${subAddress}`;
 							}
-							
-							return t`"${ethAddress}" is not a Etherium address`;
-						}, 'Convert Etherium address to specific Substrate network address');
+
+							return t`"${ethAddress}" is not a Ethereum address`;
+						}, 'Convert Ethereum address to specific Substrate network address');
 					});
 				});
-			});
-		});
-	})
-	.thenLiteral('from', b => {
-		b.thenLiteral('eth', b => {
-			b.thenArgument('eth address', stringArgument('single_word'), b => {
-				b.executes( async ctx => {
+				b.executes(async ctx => {
 					const ethAddress = ctx.getArgument('eth address');
 					if (isEthereumAddress(ethAddress)) {
 						const subAddress = evmToAddress(ethAddress).toString();
 						return t`Substrate address:\n${subAddress}`;
 					}
-					
-					return t`"${ethAddress}" is not a Etherium address`;
-				}, 'Convert Etherium address to common Substrate address');
+
+					return t`"${ethAddress}" is not a Ethereum address`;
+				}, 'Convert Ethereum address to common Substrate address');
 			});
 		});
 	});
